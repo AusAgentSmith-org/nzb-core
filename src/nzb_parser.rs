@@ -2,6 +2,7 @@ use std::path::Path;
 
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
+use unicode_normalization::UnicodeNormalization;
 
 use crate::error::NzbError;
 use crate::models::{Article, JobStatus, NzbFile, NzbJob, Priority};
@@ -157,7 +158,7 @@ pub fn parse_nzb(name: &str, data: &[u8]) -> Result<NzbJob, NzbError> {
 
     Ok(NzbJob {
         id: uuid::Uuid::new_v4().to_string(),
-        name: name.to_string(),
+        name: name.nfc().collect(),
         category: "Default".into(),
         status: JobStatus::Queued,
         priority: Priority::Normal,
@@ -208,8 +209,12 @@ struct SegmentBuilder {
 /// Sanitize a filename by removing/replacing characters that are unsafe on
 /// common filesystems (Windows NTFS, Linux ext4, macOS HFS+).
 fn sanitize_filename(name: &str) -> String {
-    let mut out = String::with_capacity(name.len());
-    for ch in name.chars() {
+    // Normalize to NFC first — filenames from NZB subjects may arrive in
+    // decomposed (NFD) form, causing duplicate files or lookup failures
+    // across platforms (macOS HFS+/APFS uses NFD internally).
+    let normalized: String = name.nfc().collect();
+    let mut out = String::with_capacity(normalized.len());
+    for ch in normalized.chars() {
         match ch {
             // Illegal on Windows / problematic everywhere
             '<' | '>' | ':' | '"' | '|' | '?' | '*' => {}
@@ -678,6 +683,36 @@ mod tests {
 
         let job = parse_nzb("amp_test", nzb_data).unwrap();
         assert_eq!(job.files[0].filename, "His.and.Hers.S01E01.mkv");
+    }
+
+    // -----------------------------------------------------------------------
+    // Unicode NFC normalization tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_sanitize_normalizes_nfd_to_nfc() {
+        // "café.rar" in NFD: 'e' + combining acute accent (U+0301)
+        let nfd = "caf\u{0065}\u{0301}.rar";
+        // Should produce NFC: precomposed 'é' (U+00E9)
+        assert_eq!(sanitize_filename(nfd), "caf\u{00E9}.rar");
+    }
+
+    #[test]
+    fn test_parse_nzb_normalizes_job_name() {
+        let nzb_data = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+  <file poster="p@x.com" date="100" subject="test.rar (1/1)">
+    <groups><group>alt.test</group></groups>
+    <segments>
+      <segment number="1" bytes="100">s@x</segment>
+    </segments>
+  </file>
+</nzb>"#;
+
+        // Pass NFD name: "café" decomposed
+        let job = parse_nzb("caf\u{0065}\u{0301}", nzb_data).unwrap();
+        // Job name should be NFC
+        assert_eq!(job.name, "caf\u{00E9}");
     }
 
     #[test]
