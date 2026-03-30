@@ -11,3 +11,4 @@ pub use config::AppConfig;
 pub use db::Database;
 pub use error::{NzbError, Result};
 pub use models::*;
+pub use nzb_nntp;
