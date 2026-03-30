@@ -64,6 +64,7 @@ impl ImportedServer {
             pipelining: 1,
             optional: self.optional,
             compress: false,
+            ramp_up_delay_ms: 250,
             proxy_url: None,
         }
     }
