@@ -196,6 +196,15 @@ impl Database {
             )?;
         }
 
+        // Ensure settings table exists for databases that jumped to v5
+        // with groups tables but without settings (pre-extraction rustnzbd)
+        self.conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );",
+        )?;
+
         #[cfg(feature = "groups-db")]
         if version < 6 {
             info!("Applying database migration v6: newsgroup browsing");
