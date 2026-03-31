@@ -232,11 +232,11 @@ mod tests {
         assert!(cfg.ssl_verify);
         assert!(cfg.username.is_none());
         assert!(cfg.password.is_none());
-        assert_eq!(cfg.connections, 4);
+        assert_eq!(cfg.connections, 8);
         assert_eq!(cfg.priority, 0);
         assert!(cfg.enabled);
         assert_eq!(cfg.retention, 0);
-        assert_eq!(cfg.pipelining, 20);
+        assert_eq!(cfg.pipelining, 1);
         assert!(!cfg.optional);
     }
 

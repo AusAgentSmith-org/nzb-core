@@ -550,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "nzb-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -570,8 +570,7 @@ dependencies = [
 
 [[package]]
 name = "nzb-nntp"
-version = "0.1.0"
-source = "git+https://github.com/AusAgentSmith/nzb-nntp.git?tag=v0.1.1#070521a515c0f11a68017bb92e53ae0633b245aa"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -587,6 +586,7 @@ dependencies = [
  "tokio-rustls",
  "tokio-socks",
  "tracing",
+ "uuid",
  "webpki-roots",
 ]
 
