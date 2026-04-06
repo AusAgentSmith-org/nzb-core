@@ -4,14 +4,14 @@ version = "0.2.0"
 edition = "2024"
 description = "Shared models, config, NZB parser, and SQLite database for NZB clients"
 license = "MIT"
-repository = "https://github.com/AusAgentSmith-org/nzb-core"
+repository = "http://100.92.54.45:3002/indexarr/nzb-core"
 
 [features]
 default = []
 groups-db = []
 
 [dependencies]
-nzb-nntp = { git = "https://github.com/AusAgentSmith-org/nzb-nntp.git", tag = "v0.2.0" }
+nzb-nntp = { git = "http://100.92.54.45:3002/indexarr/nzb-nntp.git", tag = "v0.2.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
