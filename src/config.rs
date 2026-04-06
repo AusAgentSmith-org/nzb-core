@@ -63,6 +63,11 @@ pub struct GeneralConfig {
     /// RSS feed history limit: how many feed items to keep (None = keep all, default 500)
     #[serde(default = "default_rss_history_limit")]
     pub rss_history_limit: Option<usize>,
+    /// Begin extracting RAR volumes during download instead of waiting for the
+    /// job to complete. Requires `unrar` on PATH. Falls back to normal
+    /// post-processing if articles fail or unrar is unavailable.
+    #[serde(default = "default_true")]
+    pub direct_unpack: bool,
 }
 
 fn default_rss_history_limit() -> Option<usize> {
@@ -91,6 +96,7 @@ impl Default for GeneralConfig {
             min_free_space_bytes: default_min_free_space(),
             watch_dir: None,
             rss_history_limit: default_rss_history_limit(),
+            direct_unpack: true,
         }
     }
 }
