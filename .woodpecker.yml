@@ -6,11 +6,11 @@ when:
 steps:
   - name: debug
     image: rust:1.88-bookworm
-    secrets: [git_auth_token]
+    environment:
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
     commands:
-      - echo "Token length is $${#GIT_AUTH_TOKEN}"
-      - echo "Token starts with $${GIT_AUTH_TOKEN:0:5}"
-      - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n\n[registry]\ndefault = "forgejo"\n' > $$CARGO_HOME/config.toml
-      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$$GIT_AUTH_TOKEN" > $$CARGO_HOME/credentials.toml
-      - cat $$CARGO_HOME/credentials.toml
-      - cargo check --workspace 2>&1 || true
+      - echo "env token length $(echo -n $GIT_AUTH_TOKEN | wc -c)"
+      - env | grep -i auth | head -5 || echo "no auth vars"
+      - env | grep -i git | head -5 || echo "no git vars"
+      - env | wc -l
