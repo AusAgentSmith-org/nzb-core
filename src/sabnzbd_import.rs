@@ -204,8 +204,7 @@ pub fn parse_sabnzbd_ini(content: &str) -> SabnzbdImportPreview {
                 && !script.is_empty()
             {
                 warnings.push(format!(
-                    "Category '{}': script '{}' not imported (rustnzb doesn't support scripts)",
-                    name, script
+                    "Category '{name}': script '{script}' not imported (rustnzb doesn't support scripts)"
                 ));
             }
 
@@ -239,8 +238,7 @@ pub fn parse_sabnzbd_ini(content: &str) -> SabnzbdImportPreview {
 
             if filter_regex.is_some() {
                 warnings.push(format!(
-                    "RSS feed '{}': complex filter simplified to first include pattern",
-                    subsection
+                    "RSS feed '{subsection}': complex filter simplified to first include pattern"
                 ));
             }
 
@@ -327,8 +325,7 @@ pub fn parse_sabnzbd_api_response(json: &serde_json::Value) -> SabnzbdImportPrev
                             .or(s["name"].as_str())
                             .unwrap_or("unknown");
                         warnings.push(format!(
-                            "Server '{}': password is masked (***) — you'll need to enter it manually",
-                            name
+                            "Server '{name}': password is masked (***) — you'll need to enter it manually"
                         ));
                     }
 
@@ -389,8 +386,7 @@ pub fn parse_sabnzbd_api_response(json: &serde_json::Value) -> SabnzbdImportPrev
                         && !script.is_empty()
                     {
                         warnings.push(format!(
-                            "Category '{}': script '{}' not imported",
-                            name, script
+                            "Category '{name}': script '{script}' not imported"
                         ));
                     }
 
