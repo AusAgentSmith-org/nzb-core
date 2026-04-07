@@ -385,9 +385,7 @@ pub fn parse_sabnzbd_api_response(json: &serde_json::Value) -> SabnzbdImportPrev
                         && script != "Default"
                         && !script.is_empty()
                     {
-                        warnings.push(format!(
-                            "Category '{name}': script '{script}' not imported"
-                        ));
+                        warnings.push(format!("Category '{name}': script '{script}' not imported"));
                     }
 
                     CategoryConfig {
