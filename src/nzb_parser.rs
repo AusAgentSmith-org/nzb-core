@@ -759,10 +759,17 @@ mod tests {
 </nzb>"#;
 
         let job = parse_nzb("zero_bytes", nzb_data).unwrap();
-        assert_eq!(job.files[0].articles.len(), 2, "Zero-byte segment should be dropped");
+        assert_eq!(
+            job.files[0].articles.len(),
+            2,
+            "Zero-byte segment should be dropped"
+        );
         assert_eq!(job.files[0].articles[0].message_id, "good@x");
         assert_eq!(job.files[0].articles[1].message_id, "also-good@x");
-        assert_eq!(job.total_bytes, 800000, "Total bytes should exclude zero-byte segment");
+        assert_eq!(
+            job.total_bytes, 800000,
+            "Total bytes should exclude zero-byte segment"
+        );
     }
 
     #[test]
@@ -779,7 +786,11 @@ mod tests {
 </nzb>"#;
 
         let job = parse_nzb("zero_num", nzb_data).unwrap();
-        assert_eq!(job.files[0].articles.len(), 1, "Zero-number segment should be dropped");
+        assert_eq!(
+            job.files[0].articles.len(),
+            1,
+            "Zero-number segment should be dropped"
+        );
         assert_eq!(job.files[0].articles[0].message_id, "good@x");
     }
 
@@ -797,7 +808,11 @@ mod tests {
 </nzb>"#;
 
         let job = parse_nzb("empty_msgid", nzb_data).unwrap();
-        assert_eq!(job.files[0].articles.len(), 1, "Empty message-ID segment should be dropped");
+        assert_eq!(
+            job.files[0].articles.len(),
+            1,
+            "Empty message-ID segment should be dropped"
+        );
         assert_eq!(job.files[0].articles[0].message_id, "good@x");
     }
 
@@ -846,9 +861,17 @@ mod tests {
 
         let job = parse_nzb("mixed", nzb_data).unwrap();
         assert_eq!(job.file_count, 2);
-        assert_eq!(job.files[0].articles.len(), 1, "file1 should have 1 valid segment");
+        assert_eq!(
+            job.files[0].articles.len(),
+            1,
+            "file1 should have 1 valid segment"
+        );
         assert_eq!(job.files[0].bytes, 100);
-        assert_eq!(job.files[1].articles.len(), 2, "file2 should have 2 valid segments");
+        assert_eq!(
+            job.files[1].articles.len(),
+            2,
+            "file2 should have 2 valid segments"
+        );
         assert_eq!(job.files[1].bytes, 500);
         assert_eq!(job.total_bytes, 600);
         assert_eq!(job.article_count, 3);
