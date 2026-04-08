@@ -2,6 +2,7 @@ use std::path::Path;
 
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
+use tracing::warn;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::error::NzbError;
@@ -88,6 +89,22 @@ pub fn parse_nzb(name: &str, data: &[u8]) -> Result<NzbJob, NzbError> {
                 b"file" => {
                     if let Some(fb) = current_file.take() {
                         let filename = sanitize_filename(&extract_filename(&fb.subject));
+
+                        // Filter out invalid segments: number=0, bytes=0, or
+                        // empty message-ID are malformed and would cause
+                        // zero-byte files or assembly failures downstream.
+                        let valid_count = current_segments.len();
+                        current_segments
+                            .retain(|s| s.number > 0 && s.bytes > 0 && !s.message_id.is_empty());
+                        let dropped = valid_count - current_segments.len();
+                        if dropped > 0 {
+                            warn!(
+                                filename = %filename,
+                                dropped,
+                                "Dropped {dropped} invalid segment(s) (zero bytes, zero number, or empty message-ID)"
+                            );
+                        }
+
                         let total_bytes: u64 = current_segments.iter().map(|s| s.bytes).sum();
                         let articles: Vec<Article> = current_segments
                             .drain(..)
@@ -721,5 +738,158 @@ mod tests {
         // < Release > - "filename.rar" yEnc (01/10)
         let subject = r#"< Mayday.S26E10 > - "Mayday.S26E10.part01.rar" yEnc (01/57)"#;
         assert_eq!(extract_filename(subject), "Mayday.S26E10.part01.rar");
+    }
+
+    // -----------------------------------------------------------------------
+    // Empty / zero-byte segment handling tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_parse_nzb_drops_zero_byte_segments() {
+        let nzb_data = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+  <file poster="p@x.com" date="100" subject="test.rar (1/1)">
+    <groups><group>alt.test</group></groups>
+    <segments>
+      <segment number="1" bytes="500000">good@x</segment>
+      <segment number="2" bytes="0">zerobytes@x</segment>
+      <segment number="3" bytes="300000">also-good@x</segment>
+    </segments>
+  </file>
+</nzb>"#;
+
+        let job = parse_nzb("zero_bytes", nzb_data).unwrap();
+        assert_eq!(job.files[0].articles.len(), 2, "Zero-byte segment should be dropped");
+        assert_eq!(job.files[0].articles[0].message_id, "good@x");
+        assert_eq!(job.files[0].articles[1].message_id, "also-good@x");
+        assert_eq!(job.total_bytes, 800000, "Total bytes should exclude zero-byte segment");
+    }
+
+    #[test]
+    fn test_parse_nzb_drops_zero_number_segments() {
+        let nzb_data = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+  <file poster="p@x.com" date="100" subject="test.rar (1/1)">
+    <groups><group>alt.test</group></groups>
+    <segments>
+      <segment number="0" bytes="500000">bad-number@x</segment>
+      <segment number="1" bytes="500000">good@x</segment>
+    </segments>
+  </file>
+</nzb>"#;
+
+        let job = parse_nzb("zero_num", nzb_data).unwrap();
+        assert_eq!(job.files[0].articles.len(), 1, "Zero-number segment should be dropped");
+        assert_eq!(job.files[0].articles[0].message_id, "good@x");
+    }
+
+    #[test]
+    fn test_parse_nzb_drops_empty_message_id_segments() {
+        let nzb_data = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+  <file poster="p@x.com" date="100" subject="test.rar (1/1)">
+    <groups><group>alt.test</group></groups>
+    <segments>
+      <segment number="1" bytes="500000"></segment>
+      <segment number="2" bytes="500000">good@x</segment>
+    </segments>
+  </file>
+</nzb>"#;
+
+        let job = parse_nzb("empty_msgid", nzb_data).unwrap();
+        assert_eq!(job.files[0].articles.len(), 1, "Empty message-ID segment should be dropped");
+        assert_eq!(job.files[0].articles[0].message_id, "good@x");
+    }
+
+    #[test]
+    fn test_parse_nzb_all_segments_invalid_creates_empty_file() {
+        // All segments are invalid — file should still be created but with
+        // zero articles and zero bytes. This matches NZB spec (file exists
+        // but has no downloadable content).
+        let nzb_data = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+  <file poster="p@x.com" date="100" subject="test.rar (1/1)">
+    <groups><group>alt.test</group></groups>
+    <segments>
+      <segment number="0" bytes="0"></segment>
+      <segment number="0" bytes="500000">bad@x</segment>
+    </segments>
+  </file>
+</nzb>"#;
+
+        let job = parse_nzb("all_invalid", nzb_data).unwrap();
+        assert_eq!(job.files[0].articles.len(), 0);
+        assert_eq!(job.files[0].bytes, 0);
+        assert_eq!(job.total_bytes, 0);
+        assert_eq!(job.article_count, 0);
+    }
+
+    #[test]
+    fn test_parse_nzb_mixed_valid_invalid_segments_across_files() {
+        let nzb_data = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+  <file poster="p@x.com" date="100" subject="file1.rar (1/2)">
+    <groups><group>alt.test</group></groups>
+    <segments>
+      <segment number="1" bytes="100">s1@x</segment>
+      <segment number="2" bytes="0">bad@x</segment>
+    </segments>
+  </file>
+  <file poster="p@x.com" date="100" subject="file2.rar (2/2)">
+    <groups><group>alt.test</group></groups>
+    <segments>
+      <segment number="1" bytes="200">s2@x</segment>
+      <segment number="2" bytes="300">s3@x</segment>
+    </segments>
+  </file>
+</nzb>"#;
+
+        let job = parse_nzb("mixed", nzb_data).unwrap();
+        assert_eq!(job.file_count, 2);
+        assert_eq!(job.files[0].articles.len(), 1, "file1 should have 1 valid segment");
+        assert_eq!(job.files[0].bytes, 100);
+        assert_eq!(job.files[1].articles.len(), 2, "file2 should have 2 valid segments");
+        assert_eq!(job.files[1].bytes, 500);
+        assert_eq!(job.total_bytes, 600);
+        assert_eq!(job.article_count, 3);
+    }
+
+    #[test]
+    fn test_parse_nzb_negative_bytes_parsed_as_zero() {
+        // Negative values in unsigned parse → unwrap_or(0) → dropped
+        let nzb_data = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+  <file poster="p@x.com" date="100" subject="test.rar (1/1)">
+    <groups><group>alt.test</group></groups>
+    <segments>
+      <segment number="1" bytes="-1">neg@x</segment>
+      <segment number="2" bytes="500000">good@x</segment>
+    </segments>
+  </file>
+</nzb>"#;
+
+        let job = parse_nzb("neg_bytes", nzb_data).unwrap();
+        // "-1" fails u64 parse → unwrap_or(0) → dropped by bytes > 0 filter
+        assert_eq!(job.files[0].articles.len(), 1);
+        assert_eq!(job.files[0].articles[0].message_id, "good@x");
+    }
+
+    #[test]
+    fn test_parse_nzb_missing_bytes_attr_treated_as_zero() {
+        // Missing bytes attribute → unwrap_or(0) → dropped
+        let nzb_data = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+  <file poster="p@x.com" date="100" subject="test.rar (1/1)">
+    <groups><group>alt.test</group></groups>
+    <segments>
+      <segment number="1">no-bytes@x</segment>
+      <segment number="2" bytes="500000">good@x</segment>
+    </segments>
+  </file>
+</nzb>"#;
+
+        let job = parse_nzb("no_bytes_attr", nzb_data).unwrap();
+        assert_eq!(job.files[0].articles.len(), 1);
+        assert_eq!(job.files[0].articles[0].message_id, "good@x");
     }
 }
