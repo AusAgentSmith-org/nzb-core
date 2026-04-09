@@ -550,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "nzb-core"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "chrono",
@@ -570,9 +570,9 @@ dependencies = [
 
 [[package]]
 name = "nzb-nntp"
-version = "0.2.6"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f61944290dd3718fb9c1a4c4e833c18f84c59d1b012b2b855a18364fdcdfab73"
+checksum = "a9212c9ddacb61298a69ea6458d27350b8325ad8dfb26a3b197d2b22207200af"
 dependencies = [
  "anyhow",
  "arc-swap",

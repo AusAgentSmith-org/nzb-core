@@ -48,26 +48,20 @@ pub struct ImportedServer {
 impl ImportedServer {
     /// Convert to a rustnzb `ServerConfig`, generating a new UUID.
     pub fn to_server_config(&self) -> ServerConfig {
-        ServerConfig {
-            id: uuid::Uuid::new_v4().to_string(),
-            name: self.name.clone(),
-            host: self.host.clone(),
-            port: self.port,
-            ssl: self.ssl,
-            ssl_verify: self.ssl_verify,
-            username: self.username.clone(),
-            password: self.password.clone(),
-            connections: self.connections,
-            priority: self.priority,
-            enabled: self.enabled,
-            retention: self.retention,
-            pipelining: 1,
-            optional: self.optional,
-            compress: false,
-            ramp_up_delay_ms: 250,
-            recv_buffer_size: 0,
-            proxy_url: None,
-        }
+        let mut c = ServerConfig::new(uuid::Uuid::new_v4().to_string(), &self.host);
+        c.name = self.name.clone();
+        c.port = self.port;
+        c.ssl = self.ssl;
+        c.ssl_verify = self.ssl_verify;
+        c.username = self.username.clone();
+        c.password = self.password.clone();
+        c.connections = self.connections;
+        c.priority = self.priority;
+        c.enabled = self.enabled;
+        c.retention = self.retention;
+        c.optional = self.optional;
+        c.recv_buffer_size = 0;
+        c
     }
 }
 

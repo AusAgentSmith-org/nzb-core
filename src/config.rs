@@ -284,26 +284,15 @@ mod tests {
 
     #[test]
     fn test_server_config_toml_roundtrip() {
-        let original = ServerConfig {
-            id: "srv-1".into(),
-            name: "Usenet Provider".into(),
-            host: "news.example.com".into(),
-            port: 563,
-            ssl: true,
-            ssl_verify: true,
-            username: Some("user".into()),
-            password: Some("pass".into()),
-            connections: 20,
-            priority: 0,
-            enabled: true,
-            retention: 3000,
-            pipelining: 5,
-            optional: false,
-            compress: false,
-            ramp_up_delay_ms: 0,
-            recv_buffer_size: 0,
-            proxy_url: None,
-        };
+        let mut original = ServerConfig::new("srv-1", "news.example.com");
+        original.name = "Usenet Provider".into();
+        original.username = Some("user".into());
+        original.password = Some("pass".into());
+        original.connections = 20;
+        original.retention = 3000;
+        original.pipelining = 5;
+        original.ramp_up_delay_ms = 0;
+        original.recv_buffer_size = 0;
 
         let toml_str = toml::to_string_pretty(&original).unwrap();
         let restored: ServerConfig = toml::from_str(&toml_str).unwrap();
@@ -325,26 +314,17 @@ mod tests {
     #[test]
     fn test_app_config_toml_roundtrip() {
         let mut original = AppConfig::default();
-        original.servers.push(ServerConfig {
-            id: "test-srv".into(),
-            name: "Test".into(),
-            host: "news.test.com".into(),
-            port: 119,
-            ssl: false,
-            ssl_verify: false,
-            username: None,
-            password: None,
-            connections: 4,
-            priority: 1,
-            enabled: true,
-            retention: 0,
-            pipelining: 1,
-            optional: true,
-            compress: false,
-            ramp_up_delay_ms: 0,
-            recv_buffer_size: 0,
-            proxy_url: None,
-        });
+        let mut srv = ServerConfig::new("test-srv", "news.test.com");
+        srv.name = "Test".into();
+        srv.port = 119;
+        srv.ssl = false;
+        srv.ssl_verify = false;
+        srv.connections = 4;
+        srv.priority = 1;
+        srv.optional = true;
+        srv.ramp_up_delay_ms = 0;
+        srv.recv_buffer_size = 0;
+        original.servers.push(srv);
         original.general.speed_limit_bps = 1_000_000;
         original.general.api_key = Some("secret-key".into());
 
@@ -366,12 +346,9 @@ mod tests {
         let path = dir.path().join("config.toml");
 
         let mut original = AppConfig::default();
-        original.servers.push(ServerConfig {
-            id: "file-srv".into(),
-            name: "File Test".into(),
-            host: "news.file.com".into(),
-            ..ServerConfig::default()
-        });
+        let mut srv = ServerConfig::new("file-srv", "news.file.com");
+        srv.name = "File Test".into();
+        original.servers.push(srv);
         original.general.port = 8888;
 
         original.save(&path).unwrap();
@@ -412,12 +389,9 @@ mod tests {
     #[test]
     fn test_config_find_server() {
         let mut cfg = AppConfig::default();
-        cfg.servers.push(ServerConfig {
-            id: "primary".into(),
-            name: "Primary".into(),
-            host: "news.primary.com".into(),
-            ..ServerConfig::default()
-        });
+        let mut srv = ServerConfig::new("primary", "news.primary.com");
+        srv.name = "Primary".into();
+        cfg.servers.push(srv);
 
         assert!(cfg.server("primary").is_some());
         assert_eq!(cfg.server("primary").unwrap().host, "news.primary.com");
