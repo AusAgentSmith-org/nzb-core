@@ -550,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "nzb-core"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "chrono",
@@ -570,9 +570,9 @@ dependencies = [
 
 [[package]]
 name = "nzb-nntp"
-version = "0.2.4"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "100450581201184d471da3ce200879ab44836b65c7a562ea8e645dbf462e2dc4"
+checksum = "f61944290dd3718fb9c1a4c4e833c18f84c59d1b012b2b855a18364fdcdfab73"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -583,6 +583,7 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "serde",
+ "socket2 0.5.10",
  "thiserror 2.0.18",
  "tokio",
  "tokio-rustls",
@@ -933,6 +934,16 @@ checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
 name = "socket2"
+version = "0.5.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e22376abed350d73dd1cd119b57ffccad95b4e585a7cda43e286245ce23c0678"
+dependencies = [
+ "libc",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "socket2"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
@@ -1045,7 +1056,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
- "socket2",
+ "socket2 0.6.3",
  "tokio-macros",
  "windows-sys 0.61.2",
 ]

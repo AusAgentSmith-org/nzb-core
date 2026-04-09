@@ -301,6 +301,7 @@ mod tests {
             optional: false,
             compress: false,
             ramp_up_delay_ms: 0,
+            recv_buffer_size: 0,
             proxy_url: None,
         };
 
@@ -341,6 +342,7 @@ mod tests {
             optional: true,
             compress: false,
             ramp_up_delay_ms: 0,
+            recv_buffer_size: 0,
             proxy_url: None,
         });
         original.general.speed_limit_bps = 1_000_000;

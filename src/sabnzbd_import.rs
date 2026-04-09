@@ -65,6 +65,7 @@ impl ImportedServer {
             optional: self.optional,
             compress: false,
             ramp_up_delay_ms: 250,
+            recv_buffer_size: 0,
             proxy_url: None,
         }
     }
