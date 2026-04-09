@@ -5,7 +5,7 @@ when:
 
 steps:
   - name: fmt
-    image: rust:1.88-bookworm
+    image: rust:1.94-bookworm
     environment:
       GIT_AUTH_TOKEN:
         from_secret: git_auth_token
@@ -17,7 +17,7 @@ steps:
       - cargo fmt --all -- --check
 
   - name: check
-    image: rust:1.88-bookworm
+    image: rust:1.94-bookworm
     environment:
       GIT_AUTH_TOKEN:
         from_secret: git_auth_token
@@ -28,7 +28,7 @@ steps:
       - cargo check --workspace
 
   - name: test
-    image: rust:1.88-bookworm
+    image: rust:1.94-bookworm
     environment:
       GIT_AUTH_TOKEN:
         from_secret: git_auth_token
@@ -39,7 +39,7 @@ steps:
       - cargo test --workspace
 
   - name: clippy
-    image: rust:1.88-bookworm
+    image: rust:1.94-bookworm
     environment:
       GIT_AUTH_TOKEN:
         from_secret: git_auth_token
@@ -51,7 +51,7 @@ steps:
       - cargo clippy --workspace -- -D warnings
 
   - name: publish
-    image: rust:1.88-bookworm
+    image: rust:1.94-bookworm
     environment:
       GIT_AUTH_TOKEN:
         from_secret: git_auth_token
