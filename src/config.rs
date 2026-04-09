@@ -68,6 +68,24 @@ pub struct GeneralConfig {
     /// post-processing if articles fail or unrar is unavailable.
     #[serde(default = "default_true")]
     pub direct_unpack: bool,
+    /// Abort downloads that cannot possibly complete (too many missing articles).
+    /// When enabled, the engine checks article failure rates and cancels jobs
+    /// that have no chance of success. Default: true.
+    #[serde(default = "default_true")]
+    pub abort_hopeless: bool,
+    /// Quick initial check: after the first N articles have been attempted,
+    /// abort if the failure rate exceeds 80%. Catches completely dead NZBs
+    /// within seconds instead of grinding through thousands of articles.
+    /// Requires `abort_hopeless` to also be enabled. Default: true.
+    #[serde(default = "default_true")]
+    pub early_failure_check: bool,
+    /// Minimum completion percentage required to keep downloading (excluding
+    /// par2 repair files). If the ratio of available content bytes to total
+    /// content bytes drops below this value, the job is aborted.
+    /// Range: 100.0–200.0. Default: 100.2 (par2 overhead means slight
+    /// over-completion is normal).
+    #[serde(default = "default_required_completion_pct")]
+    pub required_completion_pct: f64,
 }
 
 fn default_rss_history_limit() -> Option<usize> {
@@ -76,6 +94,10 @@ fn default_rss_history_limit() -> Option<usize> {
 
 fn default_min_free_space() -> u64 {
     1_073_741_824 // 1 GB
+}
+
+fn default_required_completion_pct() -> f64 {
+    100.2
 }
 
 impl Default for GeneralConfig {
@@ -97,6 +119,9 @@ impl Default for GeneralConfig {
             watch_dir: None,
             rss_history_limit: default_rss_history_limit(),
             direct_unpack: true,
+            abort_hopeless: true,
+            early_failure_check: true,
+            required_completion_pct: default_required_completion_pct(),
         }
     }
 }
