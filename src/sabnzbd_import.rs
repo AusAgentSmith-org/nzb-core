@@ -48,7 +48,9 @@ pub struct ImportedServer {
 impl ImportedServer {
     /// Convert to a rustnzb `ServerConfig`, generating a new UUID.
     pub fn to_server_config(&self) -> ServerConfig {
-        let mut c = ServerConfig::new(uuid::Uuid::new_v4().to_string(), &self.host);
+        let mut c = ServerConfig::default();
+        c.id = uuid::Uuid::new_v4().to_string();
+        c.host = self.host.clone();
         c.name = self.name.clone();
         c.port = self.port;
         c.ssl = self.ssl;
@@ -60,7 +62,6 @@ impl ImportedServer {
         c.enabled = self.enabled;
         c.retention = self.retention;
         c.optional = self.optional;
-        c.recv_buffer_size = 0;
         c
     }
 }
