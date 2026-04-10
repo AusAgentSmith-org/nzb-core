@@ -550,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "nzb-core"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "anyhow",
  "chrono",
@@ -571,7 +571,7 @@ dependencies = [
 [[package]]
 name = "nzb-nntp"
 version = "0.2.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
 checksum = "a9212c9ddacb61298a69ea6458d27350b8325ad8dfb26a3b197d2b22207200af"
 dependencies = [
  "anyhow",
