@@ -86,6 +86,11 @@ pub struct GeneralConfig {
     /// over-completion is normal).
     #[serde(default = "default_required_completion_pct")]
     pub required_completion_pct: f64,
+    /// Maximum time in seconds to wait for a single NNTP article response
+    /// before treating the connection as stalled and reconnecting.
+    /// 0 = no timeout. Default: 30.
+    #[serde(default = "default_article_timeout_secs")]
+    pub article_timeout_secs: u64,
 }
 
 fn default_rss_history_limit() -> Option<usize> {
@@ -98,6 +103,10 @@ fn default_min_free_space() -> u64 {
 
 fn default_required_completion_pct() -> f64 {
     100.2
+}
+
+fn default_article_timeout_secs() -> u64 {
+    30
 }
 
 impl Default for GeneralConfig {
@@ -122,6 +131,7 @@ impl Default for GeneralConfig {
             abort_hopeless: true,
             early_failure_check: true,
             required_completion_pct: default_required_completion_pct(),
+            article_timeout_secs: default_article_timeout_secs(),
         }
     }
 }
