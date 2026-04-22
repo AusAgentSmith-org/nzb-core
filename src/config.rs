@@ -14,6 +14,8 @@ pub struct AppConfig {
     pub otel: OtelConfig,
     #[serde(default)]
     pub rss_feeds: Vec<RssFeedConfig>,
+    #[serde(default)]
+    pub dav: DavConfig,
 }
 
 impl Default for AppConfig {
@@ -24,6 +26,7 @@ impl Default for AppConfig {
             categories: vec![CategoryConfig::default()],
             otel: OtelConfig::default(),
             rss_feeds: Vec::new(),
+            dav: DavConfig::default(),
         }
     }
 }
@@ -215,6 +218,19 @@ fn default_true() -> bool {
     true
 }
 
+/// DAV pipeline auto-send configuration.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DavConfig {
+    /// Automatically queue every completed download into the DAV pipeline.
+    /// When true, `category_rules` is ignored.
+    pub auto_send_all: bool,
+    /// Categories whose completed downloads are automatically sent to DAV.
+    /// Only used when `auto_send_all` is false.
+    #[serde(default)]
+    pub category_rules: Vec<String>,
+}
+
 impl AppConfig {
     /// Load config from a TOML file, creating default if it doesn't exist.
     pub fn load(path: &std::path::Path) -> anyhow::Result<Self> {
@@ -253,6 +269,17 @@ impl AppConfig {
     /// Find a category by name.
     pub fn category(&self, name: &str) -> Option<&CategoryConfig> {
         self.categories.iter().find(|c| c.name == name)
+    }
+
+    /// Find a category by name, falling back to the first configured category if unknown.
+    /// Callers can rely on the result always being valid — the default config always has
+    /// at least one category ("Default").
+    pub fn find_category_or_default(&self, name: &str) -> &CategoryConfig {
+        self.categories
+            .iter()
+            .find(|c| c.name == name)
+            .or_else(|| self.categories.first())
+            .expect("AppConfig always has at least one category")
     }
 
     /// Find a server by ID.
@@ -431,6 +458,37 @@ mod tests {
         assert!(cfg.server("primary").is_some());
         assert_eq!(cfg.server("primary").unwrap().host, "news.primary.com");
         assert!(cfg.server("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_find_category_or_default() {
+        let mut cfg = AppConfig::default();
+        cfg.categories.push(CategoryConfig {
+            name: "movies".into(),
+            output_dir: None,
+            post_processing: 3,
+        });
+        assert_eq!(cfg.find_category_or_default("movies").name, "movies");
+        assert_eq!(cfg.find_category_or_default("unknown").name, "Default");
+        assert_eq!(cfg.find_category_or_default("").name, "Default");
+    }
+
+    #[test]
+    fn test_dav_config_defaults() {
+        let cfg = AppConfig::default();
+        assert!(!cfg.dav.auto_send_all);
+        assert!(cfg.dav.category_rules.is_empty());
+    }
+
+    #[test]
+    fn test_dav_config_roundtrip() {
+        let mut cfg = AppConfig::default();
+        cfg.dav.auto_send_all = false;
+        cfg.dav.category_rules = vec!["movies".into(), "tv".into()];
+        let toml_str = toml::to_string_pretty(&cfg).unwrap();
+        let restored: AppConfig = toml::from_str(&toml_str).unwrap();
+        assert!(!restored.dav.auto_send_all);
+        assert_eq!(restored.dav.category_rules, vec!["movies", "tv"]);
     }
 
     #[test]
