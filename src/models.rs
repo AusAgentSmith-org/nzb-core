@@ -41,14 +41,45 @@ impl std::fmt::Display for JobStatus {
 // Priority
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Priority {
     Low = 0,
     #[default]
     Normal = 1,
     High = 2,
     Force = 3,
+}
+
+impl From<Priority> for u8 {
+    fn from(p: Priority) -> u8 {
+        p as u8
+    }
+}
+
+impl TryFrom<u8> for Priority {
+    type Error = u8;
+    fn try_from(v: u8) -> Result<Self, u8> {
+        match v {
+            0 => Ok(Self::Low),
+            1 => Ok(Self::Normal),
+            2 => Ok(Self::High),
+            3 => Ok(Self::Force),
+            other => Err(other),
+        }
+    }
+}
+
+impl Serialize for Priority {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_u8(*self as u8)
+    }
+}
+
+impl<'de> Deserialize<'de> for Priority {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = u8::deserialize(d)?;
+        Self::try_from(v).map_err(|_| serde::de::Error::custom(format!("invalid priority {v}")))
+    }
 }
 
 // ---------------------------------------------------------------------------
