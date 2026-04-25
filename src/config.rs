@@ -229,6 +229,17 @@ pub struct DavConfig {
     /// Only used when `auto_send_all` is false.
     #[serde(default)]
     pub category_rules: Vec<String>,
+    /// Basic-auth username for /dav. When all three credential fields are
+    /// unset, /dav is served unauthenticated.
+    #[serde(default)]
+    pub username: Option<String>,
+    /// Basic-auth password for /dav.
+    #[serde(default)]
+    pub password: Option<String>,
+    /// X-Api-Key for /dav (alternative to Basic auth — useful for tools that
+    /// don't support Basic but accept a custom header).
+    #[serde(default)]
+    pub api_key: Option<String>,
 }
 
 impl AppConfig {
@@ -478,6 +489,9 @@ mod tests {
         let cfg = AppConfig::default();
         assert!(!cfg.dav.auto_send_all);
         assert!(cfg.dav.category_rules.is_empty());
+        assert!(cfg.dav.username.is_none());
+        assert!(cfg.dav.password.is_none());
+        assert!(cfg.dav.api_key.is_none());
     }
 
     #[test]
@@ -485,10 +499,32 @@ mod tests {
         let mut cfg = AppConfig::default();
         cfg.dav.auto_send_all = false;
         cfg.dav.category_rules = vec!["movies".into(), "tv".into()];
+        cfg.dav.username = Some("plex".into());
+        cfg.dav.password = Some("hunter2".into());
+        cfg.dav.api_key = Some("deadbeef".into());
         let toml_str = toml::to_string_pretty(&cfg).unwrap();
         let restored: AppConfig = toml::from_str(&toml_str).unwrap();
         assert!(!restored.dav.auto_send_all);
         assert_eq!(restored.dav.category_rules, vec!["movies", "tv"]);
+        assert_eq!(restored.dav.username.as_deref(), Some("plex"));
+        assert_eq!(restored.dav.password.as_deref(), Some("hunter2"));
+        assert_eq!(restored.dav.api_key.as_deref(), Some("deadbeef"));
+    }
+
+    /// Configs from older versions of rustnzb (no DAV credential fields)
+    /// must keep deserializing.
+    #[test]
+    fn test_dav_config_backward_compat() {
+        let toml_str = r#"
+            auto_send_all = true
+            category_rules = ["movies"]
+        "#;
+        let dav: DavConfig = toml::from_str(toml_str).unwrap();
+        assert!(dav.auto_send_all);
+        assert_eq!(dav.category_rules, vec!["movies"]);
+        assert!(dav.username.is_none());
+        assert!(dav.password.is_none());
+        assert!(dav.api_key.is_none());
     }
 
     #[test]
