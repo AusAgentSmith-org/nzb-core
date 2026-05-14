@@ -10,7 +10,10 @@ steps:
     environment:
       GIT_AUTH_TOKEN:
         from_secret: git_auth_token
+      RUSTC_WRAPPER: sccache
+      SCCACHE_REDIS: "redis://100.92.54.45:6380"
     commands:
+      - apt-get install -y --no-install-recommends sccache >/dev/null 2>&1 || true
       - git config --global url."http://x-access-token:$GIT_AUTH_TOKEN@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
       - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n\n[registry]\ndefault = "forgejo"\n' > $CARGO_HOME/config.toml
       - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
@@ -22,7 +25,10 @@ steps:
     environment:
       GIT_AUTH_TOKEN:
         from_secret: git_auth_token
+      RUSTC_WRAPPER: sccache
+      SCCACHE_REDIS: "redis://100.92.54.45:6380"
     commands:
+      - apt-get install -y --no-install-recommends sccache >/dev/null 2>&1 || true
       - git config --global url."http://x-access-token:$GIT_AUTH_TOKEN@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
       - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n\n[registry]\ndefault = "forgejo"\n' > $CARGO_HOME/config.toml
       - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
@@ -33,7 +39,10 @@ steps:
     environment:
       GIT_AUTH_TOKEN:
         from_secret: git_auth_token
+      RUSTC_WRAPPER: sccache
+      SCCACHE_REDIS: "redis://100.92.54.45:6380"
     commands:
+      - apt-get install -y --no-install-recommends sccache >/dev/null 2>&1 || true
       - git config --global url."http://x-access-token:$GIT_AUTH_TOKEN@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
       - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n\n[registry]\ndefault = "forgejo"\n' > $CARGO_HOME/config.toml
       - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
@@ -44,7 +53,10 @@ steps:
     environment:
       GIT_AUTH_TOKEN:
         from_secret: git_auth_token
+      RUSTC_WRAPPER: sccache
+      SCCACHE_REDIS: "redis://100.92.54.45:6380"
     commands:
+      - apt-get install -y --no-install-recommends sccache >/dev/null 2>&1 || true
       - git config --global url."http://x-access-token:$GIT_AUTH_TOKEN@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
       - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n\n[registry]\ndefault = "forgejo"\n' > $CARGO_HOME/config.toml
       - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
