@@ -10,6 +10,32 @@ use crate::models::{Article, JobStatus, NzbFile, NzbJob, Priority};
 
 /// Parse an NZB XML file into an NzbJob.
 pub fn parse_nzb(name: &str, data: &[u8]) -> Result<NzbJob, NzbError> {
+    if data.is_empty() {
+        return Err(NzbError::InvalidNzb("NZB data is empty".into()));
+    }
+
+    // Detect obviously non-NZB content so the error is actionable rather than
+    // "No files found in NZB". Gzip magic, JSON, and HTML are the three most
+    // common things an indexer returns when the NZB is unavailable.
+    if data.starts_with(&[0x1f, 0x8b]) {
+        return Err(NzbError::InvalidNzb(
+            "NZB data appears to be gzip-compressed; decompress before parsing".into(),
+        ));
+    }
+    let prefix = &data[..data.len().min(512)];
+    let prefix_str = String::from_utf8_lossy(prefix);
+    let prefix_lower = prefix_str.to_ascii_lowercase();
+    if prefix_lower.trim_start().starts_with('{') || prefix_lower.trim_start().starts_with('[') {
+        return Err(NzbError::InvalidNzb(
+            "NZB data appears to be a JSON response rather than an NZB XML file".into(),
+        ));
+    }
+    if prefix_lower.contains("<html") || prefix_lower.contains("<!doctype html") {
+        return Err(NzbError::InvalidNzb(
+            "NZB data appears to be an HTML error page rather than an NZB XML file".into(),
+        ));
+    }
+
     let mut reader = Reader::from_reader(data);
     reader.config_mut().trim_text(true);
     let decoder = reader.decoder();
@@ -26,7 +52,7 @@ pub fn parse_nzb(name: &str, data: &[u8]) -> Result<NzbJob, NzbError> {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.local_name().as_ref() {
                 b"file" => {
                     let mut subject = String::new();
                     let mut date = 0i64;
@@ -85,7 +111,7 @@ pub fn parse_nzb(name: &str, data: &[u8]) -> Result<NzbJob, NzbError> {
                 }
                 _ => {}
             },
-            Ok(Event::End(ref e)) => match e.name().as_ref() {
+            Ok(Event::End(ref e)) => match e.local_name().as_ref() {
                 b"file" => {
                     if let Some(fb) = current_file.take() {
                         let filename = sanitize_filename(&extract_filename(&fb.subject));
@@ -158,6 +184,12 @@ pub fn parse_nzb(name: &str, data: &[u8]) -> Result<NzbJob, NzbError> {
                     seg.message_id = text;
                 }
             }
+            // Some NZB generators wrap message-IDs in CDATA sections.
+            Ok(Event::CData(ref c)) => {
+                if in_segments && let Some(seg) = current_segments.last_mut() {
+                    seg.message_id = String::from_utf8_lossy(c.as_ref()).into_owned();
+                }
+            }
             Ok(Event::Eof) => break,
             Err(e) => return Err(NzbError::ParseError(format!("XML error: {e}"))),
             _ => {}
@@ -166,6 +198,13 @@ pub fn parse_nzb(name: &str, data: &[u8]) -> Result<NzbJob, NzbError> {
     }
 
     if files.is_empty() {
+        // Log a snippet of the raw data to help diagnose unexpected content.
+        let snippet = String::from_utf8_lossy(&data[..data.len().min(256)]);
+        warn!(
+            %name,
+            first_bytes = %snippet,
+            "No <file> elements found in NZB; possible format mismatch or empty/error response"
+        );
         return Err(NzbError::InvalidNzb("No files found in NZB".into()));
     }
 
@@ -914,5 +953,108 @@ mod tests {
         let job = parse_nzb("no_bytes_attr", nzb_data).unwrap();
         assert_eq!(job.files[0].articles.len(), 1);
         assert_eq!(job.files[0].articles[0].message_id, "good@x");
+    }
+
+    // -----------------------------------------------------------------------
+    // Namespace-prefix handling (local_name fix)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_parse_nzb_namespace_prefixed_elements() {
+        // Some indexers/generators use namespace-prefixed elements like <nzb:file>.
+        // local_name() strips the prefix, so this must parse correctly.
+        let nzb_data = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nzb:nzb xmlns:nzb="http://www.newzbin.com/DTD/2003/nzb">
+  <nzb:file poster="p@x.com" date="100" subject="test.rar (1/1)">
+    <nzb:groups><nzb:group>alt.test</nzb:group></nzb:groups>
+    <nzb:segments>
+      <nzb:segment number="1" bytes="500000">ns-seg@x</nzb:segment>
+    </nzb:segments>
+  </nzb:file>
+</nzb:nzb>"#;
+
+        let job = parse_nzb("ns_test", nzb_data).unwrap();
+        assert_eq!(job.file_count, 1);
+        assert_eq!(job.files[0].articles.len(), 1);
+        assert_eq!(job.files[0].articles[0].message_id, "ns-seg@x");
+        assert_eq!(job.files[0].groups, vec!["alt.test"]);
+    }
+
+    // -----------------------------------------------------------------------
+    // CDATA segment message-ID handling
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_parse_nzb_cdata_segment_message_id() {
+        // Message-IDs wrapped in CDATA sections must be extracted correctly.
+        let nzb_data = br#"<?xml version="1.0" encoding="UTF-8"?>
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+  <file poster="p@x.com" date="100" subject="test.rar (1/1)">
+    <groups><group>alt.test</group></groups>
+    <segments>
+      <segment number="1" bytes="500000"><![CDATA[cdata-msgid@example.com]]></segment>
+      <segment number="2" bytes="300000">plain-msgid@example.com</segment>
+    </segments>
+  </file>
+</nzb>"#;
+
+        let job = parse_nzb("cdata_test", nzb_data).unwrap();
+        assert_eq!(job.files[0].articles.len(), 2);
+        assert_eq!(
+            job.files[0].articles[0].message_id,
+            "cdata-msgid@example.com"
+        );
+        assert_eq!(
+            job.files[0].articles[1].message_id,
+            "plain-msgid@example.com"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Early detection of non-NZB content
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_parse_nzb_empty_data_returns_error() {
+        let result = parse_nzb("empty", b"");
+        assert!(result.is_err());
+        match result {
+            Err(NzbError::InvalidNzb(msg)) => assert!(msg.contains("empty")),
+            _ => panic!("Expected InvalidNzb error for empty data"),
+        }
+    }
+
+    #[test]
+    fn test_parse_nzb_gzip_data_returns_error() {
+        // Gzip magic bytes — should be detected before XML parsing.
+        let result = parse_nzb("gzip", &[0x1f, 0x8b, 0x08, 0x00]);
+        assert!(result.is_err());
+        match result {
+            Err(NzbError::InvalidNzb(msg)) => assert!(msg.contains("gzip")),
+            _ => panic!("Expected InvalidNzb error for gzip data"),
+        }
+    }
+
+    #[test]
+    fn test_parse_nzb_json_data_returns_error() {
+        let result = parse_nzb("json", b"{\"error\": \"not found\"}");
+        assert!(result.is_err());
+        match result {
+            Err(NzbError::InvalidNzb(msg)) => assert!(msg.contains("JSON")),
+            _ => panic!("Expected InvalidNzb error for JSON data"),
+        }
+    }
+
+    #[test]
+    fn test_parse_nzb_html_data_returns_error() {
+        let result = parse_nzb(
+            "html",
+            b"<!DOCTYPE html><html><body>NZB not found</body></html>",
+        );
+        assert!(result.is_err());
+        match result {
+            Err(NzbError::InvalidNzb(msg)) => assert!(msg.contains("HTML")),
+            _ => panic!("Expected InvalidNzb error for HTML data"),
+        }
     }
 }
