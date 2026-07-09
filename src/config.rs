@@ -222,6 +222,8 @@ fn default_true() -> bool {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct DavConfig {
+    /// Whether the WebDAV media library is mounted at runtime.
+    pub enabled: bool,
     /// Automatically queue every completed download into the DAV pipeline.
     /// When true, `category_rules` is ignored.
     pub auto_send_all: bool,
