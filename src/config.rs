@@ -143,10 +143,20 @@ impl Default for GeneralConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct OtelConfig {
-    /// Enable OpenTelemetry export
+    /// Enable both OTEL logs and metrics. Retained as a shared fallback for
+    /// existing configs; prefer the per-signal fields below for new setups.
     pub enabled: bool,
-    /// OTLP endpoint for logs and metrics
+    /// Shared OTLP endpoint for both logs and metrics when the signal-specific
+    /// endpoints below are unset.
     pub endpoint: String,
+    /// Override for OTEL log export enablement.
+    pub logs_enabled: Option<bool>,
+    /// OTLP endpoint for log export.
+    pub logs_endpoint: Option<String>,
+    /// Override for OTEL metrics export enablement.
+    pub metrics_enabled: Option<bool>,
+    /// OTLP endpoint for metrics export.
+    pub metrics_endpoint: Option<String>,
     /// Service name reported to the collector
     pub service_name: String,
 }
@@ -156,8 +166,30 @@ impl Default for OtelConfig {
         Self {
             enabled: false,
             endpoint: "http://localhost:4317".into(),
+            logs_enabled: None,
+            logs_endpoint: None,
+            metrics_enabled: None,
+            metrics_endpoint: None,
             service_name: "rustnzb".into(),
         }
+    }
+}
+
+impl OtelConfig {
+    pub fn logs_enabled(&self) -> bool {
+        self.logs_enabled.unwrap_or(self.enabled)
+    }
+
+    pub fn metrics_enabled(&self) -> bool {
+        self.metrics_enabled.unwrap_or(self.enabled)
+    }
+
+    pub fn logs_endpoint(&self) -> &str {
+        self.logs_endpoint.as_deref().unwrap_or(&self.endpoint)
+    }
+
+    pub fn metrics_endpoint(&self) -> &str {
+        self.metrics_endpoint.as_deref().unwrap_or(&self.endpoint)
     }
 }
 
@@ -346,6 +378,10 @@ mod tests {
         assert_eq!(cfg.categories[0].name, "Default");
         assert_eq!(cfg.categories[0].post_processing, 3);
         assert!(!cfg.otel.enabled);
+        assert!(!cfg.otel.logs_enabled());
+        assert!(!cfg.otel.metrics_enabled());
+        assert_eq!(cfg.otel.logs_endpoint(), "http://localhost:4317");
+        assert_eq!(cfg.otel.metrics_endpoint(), "http://localhost:4317");
         assert!(cfg.rss_feeds.is_empty());
     }
 
